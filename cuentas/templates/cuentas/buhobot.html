@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duolingo - Buhobot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght=400;700;900&display=swap');
+        body { font-family: 'Nunito', sans-serif; background-color: #131f24; }
+    </style>
+</head>
+<body class="text-gray-200 min-h-screen flex bg-[#131f24]">
+
+    <aside class="w-64 border-r-2 border-[#37464f] h-screen p-6 flex flex-col justify-between fixed left-0 top-0 bg-[#131f24]">
+        <div>
+            <div class="mb-8 px-2">
+                <h1 class="text-3xl font-black text-[#58cc02] tracking-wide">duolingo</h1>
+            </div>
+            <nav class="space-y-2">
+                <a href="/" class="flex items-center gap-4 text-[#afbbca] hover:bg-[#202f36] hover:text-[#58cc02] font-extrabold px-4 py-3 rounded-xl tracking-wider text-sm uppercase transition">
+                    <i class="fa-solid fa-house text-lg"></i> Aprender
+                </a>
+                <a href="/buhobot/" class="flex items-center gap-4 bg-[#202f36] border-2 border-[#4c9700] text-[#58cc02] font-extrabold px-4 py-3 rounded-xl tracking-wider text-sm uppercase">
+                    <i class="fa-solid fa-robot text-lg"></i> Buhobot
+                </a>
+            </nav>
+        </div>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8 flex flex-col h-screen max-w-3xl mx-auto">
+        <div class="flex items-center gap-4 border-b-2 border-[#37464f] pb-4 mb-4">
+            <div class="text-4xl bg-[#202f36] p-2 rounded-full border-2 border-[#37464f]">🦉</div>
+            <div>
+                <h2 class="text-xl font-black text-white tracking-wide">Buhobot</h2>
+                <span class="text-xs text-[#58cc02] font-black uppercase tracking-wider flex items-center gap-1">
+                    En línea • Tu tutor
+                </span>
+            </div>
+        </div>
+
+        <div id="caja-chat" class="flex-1 overflow-y-auto pr-2 space-y-4">
+            <div class="flex items-start gap-3 max-w-[80%]">
+                <div class="text-2xl mt-1">🦉</div>
+                <div class="bg-[#202f36] border-2 border-[#37464f] text-gray-200 p-4 rounded-2xl rounded-tl-none font-bold text-sm shadow-md">
+                    ¡Hola! Soy tu asistente virtual. La pantalla ya no está en blanco.
+                </div>
+            </div>
+        </div>
+
+        <form id="form-chat" class="mt-4 flex items-center gap-3 bg-[#1a282f] border-2 border-[#37464f] p-3 rounded-2xl shadow-xl">
+            {% csrf_token %}
+            <input type="text" id="mensaje-input" placeholder="Escribe aquí..." autocomplete="off" required
+                class="flex-1 bg-transparent text-white font-bold text-sm outline-none px-2">
+            <button type="submit" class="bg-[#1cb0f6] text-white font-black p-3 rounded-xl">
+                Enviar
+            </button>
+        </form>
+    </main>
+
+</body>
+</html>

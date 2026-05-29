@@ -2,12 +2,217 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Duolingo Chatbot - Home</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duolingo - Aprender</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght=400;700;900&display=swap');
+        body { font-family: 'Nunito', sans-serif; background-color: #131f24; }
+    </style>
 </head>
-<body class="bg-green-500 flex flex-col items-center justify-center h-screen text-white">
-    <h1 class="text-5xl font-black mb-4">¡Bienvenido a Duolingo Chatbot! 🦉</h1>
-    <p class="text-xl font-bold mb-6">Has iniciado sesión correctamente con tu cuenta de Python.</p>
-    <a href="/login/" class="bg-white text-green-600 font-extrabold px-6 py-3 rounded-xl shadow-lg hover:bg-gray-100 transition">Cerrar Sesión</a>
+<body class="text-gray-200 min-h-screen flex">
+
+    <aside class="w-64 border-r-2 border-[#37464f] h-screen p-6 flex flex-col justify-between fixed left-0 top-0 bg-[#131f24]">
+        <div>
+            <div class="mb-8 px-2">
+                <h1 class="text-3xl font-black text-[#58cc02] tracking-wide">duolingo</h1>
+            </div>
+            <nav class="space-y-2">
+                <a href="#" class="flex items-center gap-4 bg-[#202f36] border-2 border-[#4c9700] text-[#58cc02] font-extrabold px-4 py-3 rounded-xl tracking-wider text-sm uppercase">
+                    <i class="fa-solid fa-house text-lg"></i> Aprender
+                </a>
+                <a href="{% url 'buhobot' %}" class="flex items-center gap-4 text-[#afbbca] hover:bg-[#202f36] hover:text-[#58cc02] font-extrabold px-4 py-3 rounded-xl tracking-wider text-sm uppercase transition">
+    <i class="fa-solid fa-robot text-lg"></i> Buhobot
+</a>
+                <a href="#" class="flex items-center gap-4 text-[#afbbca] font-extrabold px-4 py-3 rounded-xl tracking-wider text-sm uppercase opacity-50 cursor-not-allowed">
+                    <i class="fa-solid fa-trophy text-lg"></i> Ligas
+                </a>
+                <a href="#" class="flex items-center gap-4 text-[#afbbca] font-extrabold px-4 py-3 rounded-xl tracking-wider text-sm uppercase opacity-50 cursor-not-allowed">
+                    <i class="fa-solid fa-user text-lg"></i> Perfil
+                </a>
+            </nav>
+        </div>
+        <div class="border-t-2 border-[#37464f] pt-4">
+            <a href="/login/" class="flex items-center gap-4 text-red-400 hover:bg-[#202f36] font-extrabold px-4 py-3 rounded-xl tracking-wider text-sm uppercase transition">
+                <i class="fa-solid fa-right-from-bracket text-lg"></i> Salir
+            </a>
+        </div>
+    </aside>
+
+    <main class="flex-1 ml-64 p-8 flex justify-between gap-8">
+
+        <section class="flex-1 max-w-xl mx-auto flex flex-col items-center">
+            <div class="w-full bg-[#58cc02] text-white p-4 rounded-2xl border-b-4 border-[#46a302] flex justify-between items-center mb-12">
+                <div>
+                    <span class="text-xs font-black tracking-widest uppercase opacity-80">Etapa 1, Sección 1</span>
+                    <h2 class="text-xl font-black">Conceptos Básicos</h2>
+                </div>
+                <span class="bg-[#46a302] px-4 py-2 rounded-xl font-bold text-sm shadow-inner">LECCIÓN 1</span>
+            </div>
+
+            <div class="flex flex-col items-center space-y-6 relative w-full">
+                <div class="flex flex-col items-center relative">
+                    <button type="button" onclick="abrirModal()" class="absolute -top-10 bg-[#202f36] border-2 border-[#37464f] text-[#58cc02] font-black text-xs px-3 py-1 rounded-xl uppercase tracking-wider animate-bounce shadow-md z-10">
+                        Empezar
+                    </button>
+                    <button type="button" onclick="abrirModal()" class="w-20 h-16 bg-[#58cc02] border-b-8 border-[#46a302] hover:bg-[#61e002] rounded-full flex items-center justify-center text-white text-3xl shadow-lg transition active:translate-y-1 active:border-b-4 z-10">
+                        <i class="fa-solid fa-star"></i>
+                    </button>
+                </div>
+                <div class="absolute right-4 top-20 text-6xl select-none">🦉</div>
+                <div class="w-16 h-14 bg-[#37464f] border-b-4 border-[#243139] rounded-full flex items-center justify-center text-gray-500 text-xl cursor-not-allowed transform translate-x-4"><i class="fa-solid fa-book"></i></div>
+            </div>
+        </section>
+
+        <aside class="w-80 space-y-6 hidden lg:block">
+            <div class="flex items-center justify-between px-2 bg-[#1a282f] p-3 rounded-2xl border-2 border-[#37464f]">
+                <div class="flex items-center gap-1 font-black text-sm text-gray-400">🇺🇸</div>
+                <div class="flex items-center gap-2 font-black text-[#ff9600]"><i class="fa-solid fa-fire text-lg"></i> 0</div>
+                <div class="flex items-center gap-2 font-black text-[#1cb0f6]"><i class="fa-solid fa-gem text-lg"></i> {{ gemas }}</div>
+                <div class="flex items-center gap-2 font-black text-[#ff4b4b]"><i class="fa-solid fa-heart text-lg"></i> <span id="marcador-vidas">{{ vidas }}</span></div>
+            </div>
+
+            <div class="bg-[#1a282f] border-2 border-[#37464f] p-5 rounded-2xl space-y-4">
+                <h3 class="text-lg font-black text-gray-200 tracking-wide">Desafíos del día</h3>
+                <div class="flex items-center gap-4">
+                    <i class="fa-solid fa-bolt text-3xl text-[#ffc800]"></i>
+                    <div class="flex-1">
+                        <div class="flex justify-between text-xs font-black text-gray-400 mb-1">
+                            <span>Gana EXP</span>
+                            <span id="texto-exp">{{ exp }} / 100</span>
+                        </div>
+                        <div class="w-full bg-[#37464f] h-3 rounded-full overflow-hidden">
+                            <div id="barra-progreso" class="bg-[#ffc800] h-full rounded-full transition-all duration-500" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <div id="modal-ejercicio" class="fixed inset-0 bg-[#131f24] bg-opacity-95 hidden justify-center items-center z-50 p-4">
+        <div class="bg-[#1a282f] border-2 border-[#37464f] max-w-lg w-full rounded-3xl p-6 relative shadow-2xl flex flex-col space-y-6">
+            
+            <button type="button" onclick="cerrarModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-300 text-xl font-bold">✕</button>
+
+            <div class="text-center">
+                <span class="text-[#1cb0f6] text-xs font-black uppercase tracking-widest">Traduce esto al español</span>
+                <h3 id="pregunta-texto" class="text-2xl font-black text-white mt-1">"{{ pregunta.ingles }}"</h3>
+            </div>
+
+            <form id="form-sistema-quiz" class="space-y-4">
+                {% csrf_token %}
+                
+                <input type="hidden" id="respuesta-correcta-hidden" name="respuesta_correcta_hidden" value="{{ pregunta.correcta }}">
+
+                <div id="contenedor-opciones" class="space-y-4">
+                    {% for opcion in opciones %}
+                    <label class="flex items-center gap-4 bg-[#202f36] border-2 border-[#37464f] hover:bg-[#283b44] p-4 rounded-2xl cursor-pointer font-bold transition select-none w-full block">
+                        <input type="radio" name="respuesta_usuario" value="{{ opcion }}" class="mr-2" required>
+                        <span>{{ opcion }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+
+                <button type="submit" class="w-full bg-[#58cc02] border-b-4 border-[#46a302] hover:bg-[#61e002] text-white font-black py-4 rounded-2xl tracking-wider uppercase transition shadow-md mt-4">
+                    Comprobar
+                </button>
+            </form>
+
+            <div id="feedback-banner" class="hidden text-center font-black text-lg p-4 rounded-2xl mt-2 border-2"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var porcentaje = "{{ progreso_porcentaje }}";
+            if(document.getElementById("barra-progreso")) {
+                document.getElementById("barra-progreso").style.width = porcentaje + "%";
+            }
+        });
+
+        function abrirModal() {
+            document.getElementById('modal-ejercicio').style.display = 'flex';
+            document.getElementById('feedback-banner').className = "hidden"; 
+        }
+
+        function cerrarModal() {
+            document.getElementById('modal-ejercicio').style.display = 'none';
+        }
+
+        // Procesar formulario mediante AJAX
+        const miFormulario = document.getElementById('form-sistema-quiz');
+        if (miFormulario) {
+            miFormulario.addEventListener('submit', function(e) {
+                e.preventDefault(); 
+
+                const formData = new FormData(this);
+                const feedback = document.getElementById('feedback-banner');
+                
+                // Obtener el token CSRF que genera Django en el formulario
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                fetch("{% url 'home' %}", {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest",
+                        "X-CSRFToken": csrfToken // <-- CABECERA DE SEGURIDAD CLAVE PARA DJANGO
+                    }
+                })
+                .then(response => {
+                    const contentType = response.headers.get("content-type");
+                    if (!contentType || !contentType.includes("application/json")) {
+                        throw new TypeError("El servidor no devolvió JSON. Posiblemente fuiste redirigido al Login.");
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    feedback.classList.remove('hidden');
+
+                    // Mostrar si la respuesta fue correcta o incorrecta
+                    if (data.status === 'correcto') {
+                        feedback.innerText = "¡Excelente! Tu respuesta es correcta 🦉 +10 EXP";
+                        feedback.className = "text-[#58cc02] bg-[#243b23] border-[#58cc02] text-center font-black text-lg p-4 rounded-2xl mt-2 border-2 block";
+                    } else {
+                        feedback.innerText = "¡Incorrecto! Era: \"" + data.respuesta_correcta_anterior + "\" ❤️ -1 Vida";
+                        feedback.className = "text-[#ff4b4b] bg-[#3b2424] border-[#ff4b4b] text-center font-black text-lg p-4 rounded-2xl mt-2 border-2 block";
+                    }
+
+                    // Actualizar contadores globales en la pantalla
+                    if(document.getElementById('marcador-vidas')) document.getElementById('marcador-vidas').innerText = data.vidas;
+                    if(document.getElementById('texto-exp')) document.getElementById('texto-exp').innerText = data.exp + " / 100";
+                    if(document.getElementById('barra-progreso')) document.getElementById('barra-progreso').style.width = data.progreso_porcentaje + "%";
+
+                    // Pasar a la siguiente pregunta aleatoria de forma automática tras 1.9 segundos
+                    setTimeout(() => {
+                        feedback.classList.add('hidden');
+                        
+                        document.getElementById('pregunta-texto').innerText = `"${data.siguiente_ingles}"`;
+                        document.getElementById('respuesta-correcta-hidden').value = data.siguiente_correcta;
+
+                        let htmlOpciones = "";
+                        data.nuevas_opciones.forEach(opcion => {
+                            htmlOpciones += `
+                            <label class="flex items-center gap-4 bg-[#202f36] border-2 border-[#37464f] hover:bg-[#283b44] p-4 rounded-2xl cursor-pointer font-bold transition select-none w-full block">
+                                <input type="radio" name="respuesta_usuario" value="${opcion}" class="mr-2" required>
+                                <span>${opcion}</span>
+                            </label>`;
+                        });
+                        document.getElementById('contenedor-opciones').innerHTML = htmlOpciones;
+                        
+                        // Resetear el formulario para desmarcar los radio botones anteriores
+                        miFormulario.reset();
+
+                    }, 1900);
+                })
+                .catch(error => {
+                    console.error("Error detallado:", error);
+                    alert("Tu sesión pudo haber expirado o falta autenticación. Por favor, refresca la página completa.");
+                });
+            });
+        }
+    </script>
 </body>
 </html>
