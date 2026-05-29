@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Duolingo Chatbot - Crear Cuenta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-96 border-2 border-gray-200">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-black text-green-500 tracking-wide">duolingo</h1>
+            <p class="text-gray-500 font-bold mt-2">Crear tu perfil</p>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %} <!-- Llave de seguridad obligatoria en Django -->
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Nombre de usuario</label>
+                <input type="text" name="username" required class="w-full px-4 py-2 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none font-medium">
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Correo electrónico</label>
+                <input type="email" name="email" required class="w-full px-4 py-2 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none font-medium">
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Contraseña</label>
+                <input type="password" name="password" required class="w-full px-4 py-2 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none font-medium">
+            </div>
+
+            <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-extrabold py-3 rounded-xl shadow-md transition duration-200 uppercase tracking-wider text-sm border-b-4 border-green-700 active:border-b-0">
+                Crear Cuenta
+            </button>
+        </form>
+
+        <p class="text-center text-sm text-gray-600 font-bold mt-6">
+            ¿Ya tienes cuenta? <a href="/login/" class="text-blue-500 hover:underline">Inicia sesión</a>
+        </p>
+    </div>
+</body>
+</html>
