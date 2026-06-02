@@ -9,6 +9,8 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght=400;700;900&display=swap');
         body { font-family: 'Nunito', sans-serif; background-color: #131f24; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="text-gray-200 min-h-screen flex bg-[#131f24]">
@@ -19,13 +21,36 @@
                 <h1 class="text-3xl font-black text-[#58cc02] tracking-wide">duolingo</h1>
             </div>
             <nav class="space-y-2">
-                <a href="/" class="flex items-center gap-4 text-[#afbbca] hover:bg-[#202f36] hover:text-[#58cc02] font-extrabold px-4 py-3 rounded-xl tracking-wider text-sm uppercase transition">
+                <a href="{% url 'home' %}" class="flex items-center gap-4 text-[#afbbca] hover:bg-[#202f36] hover:text-[#58cc02] font-extrabold px-4 py-3 rounded-xl tracking-wider text-sm uppercase transition">
                     <i class="fa-solid fa-house text-lg"></i> Aprender
                 </a>
-                <a href="/buhobot/" class="flex items-center gap-4 bg-[#202f36] border-2 border-[#4c9700] text-[#58cc02] font-extrabold px-4 py-3 rounded-xl tracking-wider text-sm uppercase">
+                <a href="{% url 'buhobot' %}" class="flex items-center gap-4 bg-[#202f36] border-2 border-[#4c9700] text-[#58cc02] font-extrabold px-4 py-3 rounded-xl tracking-wider text-sm uppercase">
                     <i class="fa-solid fa-robot text-lg"></i> Buhobot
                 </a>
             </nav>
+        </div>
+
+        <div class="border-t-2 border-[#37464f] pt-4 space-y-3">
+            <div>
+                <label class="text-xs font-black text-gray-400 uppercase tracking-wider block mb-1">Nivel Idioma</label>
+                <select id="select-nivel" class="w-full bg-[#202f36] border-2 border-[#37464f] text-white p-2 rounded-xl font-bold text-sm outline-none">
+                    <option value="A1">Principiante (A1)</option>
+                    <option value="A2" selected>Básico (A2)</option>
+                    <option value="B1">Intermedio (B1)</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs font-black text-gray-400 uppercase tracking-wider block mb-1">Escenario</label>
+                <select id="select-escenario" class="w-full bg-[#202f36] border-2 border-[#37464f] text-white p-2 rounded-xl font-bold text-sm outline-none">
+                    <option value="Restaurante">🍔 Restaurante</option>
+                    <option value="Aeropuerto">✈️ Aeropuerto</option>
+                    <option value="Conocer a alguien">👋 Conocer a alguien</option>
+                    <option value="Tienda de ropa">🛍️ Tienda de ropa</option>
+                </select>
+            </div>
+            <button id="btn-ayuda" class="w-full bg-[#fff] text-[#131f24] hover:bg-gray-200 font-black py-2 rounded-xl text-xs uppercase tracking-wide transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-life-ring"></i> Obtener /Ayuda
+            </button>
         </div>
     </aside>
 
@@ -35,29 +60,118 @@
             <div>
                 <h2 class="text-xl font-black text-white tracking-wide">Buhobot</h2>
                 <span class="text-xs text-[#58cc02] font-black uppercase tracking-wider flex items-center gap-1">
-                    En línea • Tu tutor
+                    <span class="w-2 h-2 bg-[#58cc02] rounded-full inline-block animate-pulse"></span> En línea • Tutor IA
                 </span>
             </div>
         </div>
 
-        <div id="caja-chat" class="flex-1 overflow-y-auto pr-2 space-y-4">
+        <div id="caja-chat" class="flex-1 overflow-y-auto pr-2 space-y-4 no-scrollbar">
             <div class="flex items-start gap-3 max-w-[80%]">
-                <div class="text-2xl mt-1">🦉</div>
+                <div class="text-2xl mt-1 select-none">🦉</div>
                 <div class="bg-[#202f36] border-2 border-[#37464f] text-gray-200 p-4 rounded-2xl rounded-tl-none font-bold text-sm shadow-md">
-                    ¡Hola! Soy tu asistente virtual. La pantalla ya no está en blanco.
+                    ¡Hello! I am your Duolingo virtual assistant. Let's practice. What would you like to order today?
                 </div>
             </div>
         </div>
 
         <form id="form-chat" class="mt-4 flex items-center gap-3 bg-[#1a282f] border-2 border-[#37464f] p-3 rounded-2xl shadow-xl">
             {% csrf_token %}
-            <input type="text" id="mensaje-input" placeholder="Escribe aquí..." autocomplete="off" required
+            <input type="text" id="mensaje-input" placeholder="Escribe tu mensaje en inglés..." autocomplete="off" required
                 class="flex-1 bg-transparent text-white font-bold text-sm outline-none px-2">
-            <button type="submit" class="bg-[#1cb0f6] text-white font-black p-3 rounded-xl">
-                Enviar
+            
+            <button type="submit" class="bg-[#1cb0f6] border-b-4 border-[#1894ce] hover:bg-[#24bfff] text-white font-black p-3 rounded-xl transition shadow-md flex items-center justify-center">
+                <i class="fa-solid fa-paper-plane text-sm"></i>
             </button>
         </form>
     </main>
 
+    <script>
+        let chatHistory = []; // Memoria persistente del cliente
+
+        // Evento de Envío de Mensaje
+        document.getElementById('form-chat').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const input = document.getElementById('mensaje-input');
+            const mensajeTexto = input.value.trim();
+            if (!mensajeTexto) return;
+
+            const cajaChat = document.getElementById('caja-chat');
+
+            // 1. Añadir el mensaje del estudiante a la pantalla
+            const userHtml = `
+            <div class="flex items-start gap-3 max-w-[80%] ml-auto flex-row-reverse">
+                <div class="text-2xl mt-1 select-none">👤</div>
+                <div class="bg-[#1cb0f6] text-white p-4 rounded-2xl rounded-tr-none font-bold text-sm shadow-md">
+                    ${mensajeTexto}
+                </div>
+            </div>`;
+            cajaChat.insertAdjacentHTML('beforeend', userHtml);
+            
+            input.value = '';
+            cajaChat.scrollTop = cajaChat.scrollHeight;
+
+            // Guardar en el historial del script
+            chatHistory.push({"role": "user", "content": mensajeTexto});
+
+            // 2. Mostrar indicador de carga "Búho pensando..."
+            const loadingId = 'loading-' + Date.now();
+            const loadingHtml = `
+            <div id="${loadingId}" class="flex items-start gap-3 max-w-[80%]">
+                <div class="text-2xl mt-1 select-none">🦉</div>
+                <div class="bg-[#202f36] border-2 border-[#37464f] text-gray-400 p-4 rounded-2xl rounded-tl-none font-bold text-sm animate-pulse">
+                    Thinking...
+                </div>
+            </div>`;
+            cajaChat.insertAdjacentHTML('beforeend', loadingHtml);
+            cajaChat.scrollTop = cajaChat.scrollHeight;
+
+            // 3. Realizar la petición HTTP POST asíncrona hacia Django
+            try {
+                const response = await fetch(window.location.href, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        message: mensajeTexto,
+                        level: document.getElementById('select-nivel').value,
+                        scenario: document.getElementById('select-escenario').value,
+                        history: chatHistory
+                    })
+                });
+
+                const data = await response.json();
+                document.getElementById(loadingId).remove(); // Quitar animación de carga
+
+                if (data.status === "success") {
+                    // Pintar respuesta real de Gemini
+                    const botHtml = `
+                    <div class="flex items-start gap-3 max-w-[80%]">
+                        <div class="text-2xl mt-1 select-none">🦉</div>
+                        <div class="bg-[#202f36] border-2 border-[#37464f] text-gray-200 p-4 rounded-2xl rounded-tl-none font-bold text-sm shadow-md">
+                            ${data.reply}
+                        </div>
+                    </div>`;
+                    cajaChat.insertAdjacentHTML('beforeend', botHtml);
+                    chatHistory.push({"role": "assistant", "content": data.reply});
+                } else {
+                    alert("Error en el tutor: " + data.message);
+                }
+            } catch (err) {
+                document.getElementById(loadingId).remove();
+                console.error(err);
+            }
+            cajaChat.scrollTop = cajaChat.scrollHeight;
+        });
+
+        // Evento para el botón especial de /Ayuda
+        document.getElementById('btn-ayuda').addEventListener('click', function() {
+            const input = document.getElementById('mensaje-input');
+            input.value = "/ayuda";
+            document.getElementById('form-chat').dispatchEvent(new Event('submit'));
+        });
+    </script>
 </body>
 </html>
