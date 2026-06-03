@@ -85,6 +85,8 @@
 
     <script>
         let chatHistory = []; // Memoria persistente del cliente
+        let delayBetweenMessages = 5000; // 5 segundos de delay artificial
+        let lastMessageTime = 0; // Para rastrear el último envío
 
         // Mensajes iniciales según escenario
         const initialMessages = {
@@ -117,13 +119,67 @@
         }
 
         // --- Seguridad en cliente: control de dominio y prompt injection ---
-        function isDomainViolation(message, scenario) {
+        function getDomainViolationMessage(message, scenario) {
             const m = message.toLowerCase();
+            
+            // ===== RESTAURANTE =====
             if (scenario === 'Restaurante') {
-                const airportWords = ['ticket','flight','luggage','airport','boarding','check in','passport','baggage','plane','depart','arrival','flight'];
-                return airportWords.some(w => m.includes(w));
+                const restaurantWords = ['order', 'menu', 'food', 'drink', 'water', 'coffee', 'tea', 'juice', 'beer', 'wine', 'dish', 'plate', 'bill', 'check', 'eat', 'hungry', 'delicious', 'spicy', 'vegetarian', 'table', 'waiter', 'chef', 'kitchen', 'reservation', 'recommend', 'price', 'cost', 'expensive', 'cheap', 'appetizer', 'dessert', 'main course'];
+                const hasRestaurantWord = restaurantWords.some(w => m.includes(w));
+                
+                // Si no tiene palabras de restaurante, es violación
+                if (!hasRestaurantWord) {
+                    return {
+                        isViolation: true,
+                        message: "Sorry, this is a restaurant. Would you like to see the menu or order something else?"
+                    };
+                }
             }
-            return false;
+            
+            // ===== AEROPUERTO =====
+            else if (scenario === 'Aeropuerto') {
+                const airportWords = ['flight', 'ticket', 'boarding', 'passport', 'luggage', 'baggage', 'check', 'depart', 'arrival', 'gate', 'terminal', 'plane', 'airport', 'airline', 'seat', 'reservation', 'cancel', 'delay', 'cancel', 'security', 'customs'];
+                const hasAirportWord = airportWords.some(w => m.includes(w));
+                
+                if (!hasAirportWord) {
+                    return {
+                        isViolation: true,
+                        message: "Sorry, this is an airport. I can only help you with flight information, bookings, or luggage. What can I assist you with?"
+                    };
+                }
+            }
+            
+            // ===== TIENDA DE ROPA =====
+            else if (scenario === 'Tienda de ropa') {
+                const clothingWords = ['shirt', 'pants', 'dress', 'jacket', 'shoes', 'hat', 'coat', 'size', 'color', 'material', 'price', 'brand', 'style', 'fit', 'try', 'wear', 'fashion', 'clothes', 'cloth', 'buy', 'sale', 'discount', 'model', 'design', 'fabric', 'sleeve', 'collar', 'button'];
+                const hasClothingWord = clothingWords.some(w => m.includes(w));
+                
+                if (!hasClothingWord) {
+                    return {
+                        isViolation: true,
+                        message: "Sorry, this is a clothing store. I can only help you with fashion and apparel. What are you looking for?"
+                    };
+                }
+            }
+            
+            // ===== CONOCER A ALGUIEN =====
+            else if (scenario === 'Conocer a alguien') {
+                const socialWords = ['hi', 'hello', 'nice', 'please', 'thank', 'name', 'job', 'work', 'live', 'from', 'country', 'hobby', 'like', 'enjoy', 'sport', 'music', 'book', 'movie', 'friend', 'family', 'study', 'school', 'university', 'interested', 'fascinated', 'love', 'hate', 'think', 'feel', 'believe'];
+                const hasSocialWord = socialWords.some(w => m.includes(w));
+                
+                if (!hasSocialWord) {
+                    return {
+                        isViolation: true,
+                        message: "That's an interesting topic. Tell me more about yourself. What are your hobbies or interests?"
+                    };
+                }
+            }
+            
+            return { isViolation: false };
+        }
+
+        function isDomainViolation(message, scenario) {
+            return getDomainViolationMessage(message, scenario).isViolation;
         }
 
         function isPromptInjection(message) {
@@ -133,6 +189,38 @@
             const dangerous = ['bomb','detonate','weapon','explode','harm','kill','secret ingredients'];
             for (const k of dangerous) if (m.includes(k)) return true;
             return false;
+        }
+
+        // ===== DETECCIÓN DE ESPAÑOL =====
+        function isSpanish(message) {
+            const m = message.toLowerCase();
+            // Palabras comunes en español
+            const spanishWords = [
+                'hola', 'qué', 'cómo', 'cuándo', 'dónde', 'por qué', 'por favor', 'gracias',
+                'sí', 'no', 'es', 'son', 'está', 'están', 'tengo', 'tiene', 'yo', 'tú', 'él', 'ella',
+                'nosotros', 'vosotros', 'ellos', 'ellas', 'el', 'la', 'los', 'las', 'un', 'una',
+                'unos', 'unas', 'este', 'ese', 'aquello', 'mio', 'tuyo', 'suyo', 'nuestro',
+                'vuestro', 'agua', 'comida', 'bebida', 'mesa', 'silla', 'puerta', 'ventana',
+                'libro', 'pluma', 'casa', 'coche', 'carro', 'bicicleta', 'dinero', 'peso',
+                'euro', 'día', 'noche', 'mañana', 'tarde', 'mañana', 'ahora', 'después',
+                'antes', 'siempre', 'nunca', 'también', 'tampoco', 'o', 'y', 'pero', 'porque',
+                'aunque', 'mientras', 'cuando', 'si', 'hasta', 'desde', 'entre', 'sin',
+                'con', 'para', 'sobre', 'bajo', 'ante', 'hacia', 'durante', 'mediante',
+                'pues', 'luego', 'apenas', 'ya', 'aún', 'todavía', 'siendo', 'habiendo',
+                'necesito', 'quiero', 'puedo', 'debo', 'pueda', 'deba', 'quisiera', 'podría',
+                'debería', 'necesitaría', 'querría', 'bueno', 'malo', 'grande', 'pequeño',
+                'nuevo', 'viejo', 'joven', 'largo', 'corto', 'alto', 'bajo', 'blanco', 'negro',
+                'rojo', 'azul', 'verde', 'amarillo', 'rosa', 'morado', 'marrón', 'gris'
+            ];
+            
+            // Contar palabras españolas
+            let spanishCount = 0;
+            for (const word of spanishWords) {
+                if (m.includes(word)) spanishCount++;
+            }
+            
+            // Si hay 3+ palabras españolas, es probable que sea español
+            return spanishCount >= 3;
         }
 
         function appendBotMessage(text) {
@@ -149,6 +237,20 @@
             cajaChat.scrollTop = cajaChat.scrollHeight;
         }
 
+        // ===== MENSAJES DEL SISTEMA (CON ADVERTENCIA) =====
+        function appendSystemMessage(text) {
+            const cajaChat = document.getElementById('caja-chat');
+            const systemHtml = `
+            <div class="flex items-start gap-3 max-w-[90%] my-3">
+                <div class="text-lg mt-1 select-none">⚠️</div>
+                <div class="bg-yellow-900 bg-opacity-30 border-2 border-yellow-600 text-yellow-300 p-3 rounded-lg font-bold text-xs shadow-md">
+                    [SYSTEM] ${text}
+                </div>
+            </div>`;
+            cajaChat.insertAdjacentHTML('beforeend', systemHtml);
+            cajaChat.scrollTop = cajaChat.scrollHeight;
+        }
+
         // Evento para cambio de escenario
         document.getElementById('select-escenario').addEventListener('change', function() {
             resetChatWithScenario(this.value);
@@ -159,8 +261,33 @@
             e.preventDefault();
             
             const input = document.getElementById('mensaje-input');
+            const btnEnvio = document.querySelector('button[type="submit"]');
             const mensajeTexto = input.value.trim();
             if (!mensajeTexto) return;
+
+            // ===== DELAY ARTIFICIAL PARA PARECER HUMANO =====
+            const ahora = Date.now();
+            const tiempoTranscurrido = ahora - lastMessageTime;
+            
+            if (tiempoTranscurrido < delayBetweenMessages) {
+                const tiempoEspera = Math.ceil((delayBetweenMessages - tiempoTranscurrido) / 1000);
+                
+                // Deshabilitar botón y mostrar contador
+                btnEnvio.disabled = true;
+                const textoOriginal = btnEnvio.innerHTML;
+                
+                for (let i = tiempoEspera; i > 0; i--) {
+                    btnEnvio.innerHTML = `<i class="fa-solid fa-hourglass-end"></i> ${i}s`;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                // Reactivar botón
+                btnEnvio.disabled = false;
+                btnEnvio.innerHTML = textoOriginal;
+            }
+            
+            // Registrar el tiempo de este mensaje
+            lastMessageTime = Date.now();
 
             const cajaChat = document.getElementById('caja-chat');
 
@@ -181,14 +308,21 @@
 
             const escenario = document.getElementById('select-escenario').value;
 
+            // ===== VALIDACIÓN 1: DETECTAR ESPAÑOL =====
+            if (isSpanish(mensajeTexto)) {
+                appendSystemMessage("Please write only in English. I cannot answer messages in Spanish.");
+                return;
+            }
+
             // Comprobaciones de seguridad/alcance en cliente
             if (isPromptInjection(mensajeTexto)) {
                 appendBotMessage("I can't assist with that.");
                 return;
             }
 
-            if (isDomainViolation(mensajeTexto, escenario)) {
-                appendBotMessage("Sorry, this is a " + escenario.toLowerCase() + ". Would you like to see the menu?");
+            const domainCheck = getDomainViolationMessage(mensajeTexto, escenario);
+            if (domainCheck.isViolation) {
+                appendBotMessage(domainCheck.message);
                 return;
             }
 
@@ -225,8 +359,10 @@
 
                 if (data.status === "success") {
                     appendBotMessage(data.reply);
+                } else if (data.status === "rate_limit") {
+                    appendSystemMessage(data.message);
                 } else {
-                    alert("Error en el tutor: " + data.message);
+                    appendSystemMessage(data.message);
                 }
             } catch (err) {
                 document.getElementById(loadingId).remove();
@@ -235,8 +371,31 @@
         });
 
         // Evento para el botón especial de /Ayuda
-        document.getElementById('btn-ayuda').addEventListener('click', function() {
+        document.getElementById('btn-ayuda').addEventListener('click', async function() {
+            const btnAyuda = this;
             const input = document.getElementById('mensaje-input');
+            
+            // ===== DELAY ARTIFICIAL PARA PARECER HUMANO =====
+            const ahora = Date.now();
+            const tiempoTranscurrido = ahora - lastMessageTime;
+            
+            if (tiempoTranscurrido < delayBetweenMessages) {
+                const tiempoEspera = Math.ceil((delayBetweenMessages - tiempoTranscurrido) / 1000);
+                btnAyuda.disabled = true;
+                const textoOriginal = btnAyuda.innerHTML;
+                
+                for (let i = tiempoEspera; i > 0; i--) {
+                    btnAyuda.innerHTML = `<i class="fa-solid fa-hourglass-end"></i> Espera ${i}s`;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                btnAyuda.disabled = false;
+                btnAyuda.innerHTML = textoOriginal;
+            }
+            
+            // Registrar el tiempo de este mensaje
+            lastMessageTime = Date.now();
+            
             input.value = "/ayuda";
             document.getElementById('form-chat').dispatchEvent(new Event('submit'));
         });

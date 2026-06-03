@@ -232,6 +232,61 @@ class RateLimiter:
 
 rate_limiter = RateLimiter(max_requests=20, time_window=60)
 
+# ===== FUNCIÓN PARA DETECTAR ESPAÑOL =====
+def is_spanish_text(text):
+    """Detecta si el texto está principalmente en español"""
+    spanish_words = [
+        'hola', 'qué', 'cómo', 'cuándo', 'dónde', 'por qué', 'por favor', 'gracias',
+        'sí', 'no', 'es', 'son', 'está', 'están', 'tengo', 'tiene', 'yo', 'tú', 'él', 'ella',
+        'nosotros', 'vosotros', 'ellos', 'ellas', 'el', 'la', 'los', 'las', 'un', 'una',
+        'unos', 'unas', 'este', 'ese', 'aquello', 'mio', 'tuyo', 'suyo', 'nuestro',
+        'vuestro', 'agua', 'comida', 'bebida', 'mesa', 'silla', 'puerta', 'ventana',
+        'libro', 'pluma', 'casa', 'coche', 'carro', 'bicicleta', 'dinero', 'peso',
+        'euro', 'día', 'noche', 'mañana', 'tarde', 'ahora', 'después', 'antes',
+        'siempre', 'nunca', 'también', 'tampoco', 'pero', 'porque', 'aunque', 'mientras',
+        'cuando', 'si', 'hasta', 'desde', 'entre', 'sin', 'con', 'para', 'sobre', 'bajo'
+    ]
+    
+    text_lower = text.lower()
+    spanish_count = sum(1 for word in spanish_words if word in text_lower)
+    
+    return spanish_count >= 3
+
+# ===== VALIDACIÓN DE DOMINIO ESPECÍFICA POR ESCENARIO =====
+def check_domain_violation(message, scenario):
+    """Verifica si el mensaje está dentro del dominio del escenario"""
+    m = message.lower()
+    
+    if scenario == "Restaurante":
+        restaurant_words = ['order', 'menu', 'food', 'drink', 'water', 'coffee', 'tea', 'juice', 'beer', 'wine', 'dish', 'plate', 'bill', 'check', 'eat', 'hungry', 'delicious', 'spicy', 'vegetarian', 'table', 'waiter', 'chef', 'kitchen', 'reservation', 'recommend', 'price', 'cost', 'expensive', 'cheap', 'appetizer', 'dessert', 'main course']
+        has_restaurant_word = any(word in m for word in restaurant_words)
+        
+        if not has_restaurant_word:
+            return True, "Sorry, this is a restaurant. Would you like to see the menu or order something else?"
+    
+    elif scenario == "Aeropuerto":
+        airport_words = ['flight', 'ticket', 'boarding', 'passport', 'luggage', 'baggage', 'check', 'depart', 'arrival', 'gate', 'terminal', 'plane', 'airport', 'airline', 'seat', 'reservation', 'cancel', 'delay', 'security', 'customs']
+        has_airport_word = any(word in m for word in airport_words)
+        
+        if not has_airport_word:
+            return True, "Sorry, this is an airport. I can only help you with flight information, bookings, or luggage. What can I assist you with?"
+    
+    elif scenario == "Tienda de ropa":
+        clothing_words = ['shirt', 'pants', 'dress', 'jacket', 'shoes', 'hat', 'coat', 'size', 'color', 'material', 'price', 'brand', 'style', 'fit', 'try', 'wear', 'fashion', 'clothes', 'cloth', 'buy', 'sale', 'discount', 'model', 'design', 'fabric', 'sleeve', 'collar', 'button']
+        has_clothing_word = any(word in m for word in clothing_words)
+        
+        if not has_clothing_word:
+            return True, "Sorry, this is a clothing store. I can only help you with fashion and apparel. What are you looking for?"
+    
+    elif scenario == "Conocer a alguien":
+        social_words = ['hi', 'hello', 'nice', 'please', 'thank', 'name', 'job', 'work', 'live', 'from', 'country', 'hobby', 'like', 'enjoy', 'sport', 'music', 'book', 'movie', 'friend', 'family', 'study', 'school', 'university', 'interested', 'fascinated', 'love', 'hate', 'think', 'feel', 'believe']
+        has_social_word = any(word in m for word in social_words)
+        
+        if not has_social_word:
+            return True, "That's an interesting topic. Tell me more about yourself. What are your hobbies or interests?"
+    
+    return False, ""
+
 @login_required(login_url='login')
 def buhobot(request):
     if request.method == "POST":
@@ -253,6 +308,21 @@ def buhobot(request):
                     "message": f"⏳ Límite de solicitudes alcanzado. Espera {int(wait_time)} segundos.",
                     "wait_time": wait_time
                 }, status=429)
+
+            # ===== VALIDAR QUE NO SEA ESPAÑOL =====
+            if is_spanish_text(mensaje_usuario):
+                return JsonResponse({
+                    "status": "error",
+                    "message": "Please write only in English. I cannot answer messages in Spanish."
+                }, status=400)
+
+            # ===== VALIDAR QUE SEA DEL DOMINIO CORRECTO =====
+            is_violation, violation_message = check_domain_violation(mensaje_usuario, escenario)
+            if is_violation:
+                return JsonResponse({
+                    "status": "error",
+                    "message": violation_message
+                }, status=400)
 
             # Validar comando especial de /ayuda solicitado en tus requerimientos
             if mensaje_usuario.lower() == "/ayuda":
