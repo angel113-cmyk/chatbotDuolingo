@@ -9,8 +9,6 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght=400;700;900&display=swap');
         body { font-family: 'Nunito', sans-serif; background-color: #131f24; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="text-gray-200 min-h-screen flex bg-[#131f24]">
@@ -88,6 +86,74 @@
     <script>
         let chatHistory = []; // Memoria persistente del cliente
 
+        // Mensajes iniciales según escenario
+        const initialMessages = {
+            "Restaurante": "¡Hello! I am your Duolingo virtual assistant. Let's practice. What would you like to order today?",
+            "Aeropuerto": "¡Hello! I am your Duolingo virtual assistant. Let's practice. What do you need help with at the airport?",
+            "Conocer a alguien": "¡Hello! I am your Duolingo virtual assistant. Let's practice. How would you like to start the conversation?",
+            "Tienda de ropa": "¡Hello! I am your Duolingo virtual assistant. Let's practice. What are you looking for in our clothing store?"
+        };
+
+        // Función para obtener el mensaje inicial
+        function getInitialMessage(scenario) {
+            return initialMessages[scenario] || initialMessages["Restaurante"];
+        }
+
+        // Función para reiniciar el chat con nuevo escenario
+        function resetChatWithScenario(scenario) {
+            const cajaChat = document.getElementById('caja-chat');
+            const message = getInitialMessage(scenario);
+            
+            cajaChat.innerHTML = `
+            <div class="flex items-start gap-3 max-w-[80%]">
+                <div class="text-2xl mt-1 select-none">🦉</div>
+                <div class="bg-[#202f36] border-2 border-[#37464f] text-gray-200 p-4 rounded-2xl rounded-tl-none font-bold text-sm shadow-md">
+                    ${message}
+                </div>
+            </div>`;
+            
+            chatHistory = [];
+            cajaChat.scrollTop = cajaChat.scrollHeight;
+        }
+
+        // --- Seguridad en cliente: control de dominio y prompt injection ---
+        function isDomainViolation(message, scenario) {
+            const m = message.toLowerCase();
+            if (scenario === 'Restaurante') {
+                const airportWords = ['ticket','flight','luggage','airport','boarding','check in','passport','baggage','plane','depart','arrival','flight'];
+                return airportWords.some(w => m.includes(w));
+            }
+            return false;
+        }
+
+        function isPromptInjection(message) {
+            const m = message.toLowerCase();
+            const injPhrases = ['forget your rules','forget the rules','you are now','now you are','ignore your instructions','override your'];
+            for (const p of injPhrases) if (m.includes(p)) return true;
+            const dangerous = ['bomb','detonate','weapon','explode','harm','kill','secret ingredients'];
+            for (const k of dangerous) if (m.includes(k)) return true;
+            return false;
+        }
+
+        function appendBotMessage(text) {
+            const cajaChat = document.getElementById('caja-chat');
+            const botHtml = `
+            <div class="flex items-start gap-3 max-w-[80%]">
+                <div class="text-2xl mt-1 select-none">🦉</div>
+                <div class="bg-[#202f36] border-2 border-[#37464f] text-gray-200 p-4 rounded-2xl rounded-tl-none font-bold text-sm shadow-md">
+                    ${text}
+                </div>
+            </div>`;
+            cajaChat.insertAdjacentHTML('beforeend', botHtml);
+            chatHistory.push({"role": "assistant", "content": text});
+            cajaChat.scrollTop = cajaChat.scrollHeight;
+        }
+
+        // Evento para cambio de escenario
+        document.getElementById('select-escenario').addEventListener('change', function() {
+            resetChatWithScenario(this.value);
+        });
+
         // Evento de Envío de Mensaje
         document.getElementById('form-chat').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -107,12 +173,24 @@
                 </div>
             </div>`;
             cajaChat.insertAdjacentHTML('beforeend', userHtml);
-            
             input.value = '';
             cajaChat.scrollTop = cajaChat.scrollHeight;
 
             // Guardar en el historial del script
             chatHistory.push({"role": "user", "content": mensajeTexto});
+
+            const escenario = document.getElementById('select-escenario').value;
+
+            // Comprobaciones de seguridad/alcance en cliente
+            if (isPromptInjection(mensajeTexto)) {
+                appendBotMessage("I can't assist with that.");
+                return;
+            }
+
+            if (isDomainViolation(mensajeTexto, escenario)) {
+                appendBotMessage("Sorry, this is a " + escenario.toLowerCase() + ". Would you like to see the menu?");
+                return;
+            }
 
             // 2. Mostrar indicador de carga "Búho pensando..."
             const loadingId = 'loading-' + Date.now();
@@ -137,7 +215,7 @@
                     body: JSON.stringify({
                         message: mensajeTexto,
                         level: document.getElementById('select-nivel').value,
-                        scenario: document.getElementById('select-escenario').value,
+                        scenario: escenario,
                         history: chatHistory
                     })
                 });
@@ -146,16 +224,7 @@
                 document.getElementById(loadingId).remove(); // Quitar animación de carga
 
                 if (data.status === "success") {
-                    // Pintar respuesta real de Gemini
-                    const botHtml = `
-                    <div class="flex items-start gap-3 max-w-[80%]">
-                        <div class="text-2xl mt-1 select-none">🦉</div>
-                        <div class="bg-[#202f36] border-2 border-[#37464f] text-gray-200 p-4 rounded-2xl rounded-tl-none font-bold text-sm shadow-md">
-                            ${data.reply}
-                        </div>
-                    </div>`;
-                    cajaChat.insertAdjacentHTML('beforeend', botHtml);
-                    chatHistory.push({"role": "assistant", "content": data.reply});
+                    appendBotMessage(data.reply);
                 } else {
                     alert("Error en el tutor: " + data.message);
                 }
@@ -163,7 +232,6 @@
                 document.getElementById(loadingId).remove();
                 console.error(err);
             }
-            cajaChat.scrollTop = cajaChat.scrollHeight;
         });
 
         // Evento para el botón especial de /Ayuda
@@ -171,6 +239,14 @@
             const input = document.getElementById('mensaje-input');
             input.value = "/ayuda";
             document.getElementById('form-chat').dispatchEvent(new Event('submit'));
+        });
+
+        
+
+        // Inicializar con el mensaje correcto al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            const escenarioActual = document.getElementById('select-escenario').value;
+            resetChatWithScenario(escenarioActual);
         });
     </script>
 </body>

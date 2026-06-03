@@ -1,6 +1,8 @@
 from random import choice, random, shuffle
 import json
 import os
+import time
+import hashlib
 import google.generativeai as genai
 from dotenv import load_dotenv
 from django.shortcuts import render, redirect
@@ -9,6 +11,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login as auth_login
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
+from django.core.cache import cache
 
 # 1. LOGICA DE REGISTRO
 def registro_usuario(request):
@@ -173,6 +176,62 @@ if not GOOGLE_API_KEY:
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
+# ===== RATE LIMITER GRATUITO (SIN GASTAR DINERO) =====
+class RateLimiter:
+    """
+    Controla la tasa de solicitudes a Gemini API (20/minuto gratis)
+    Agrégale delays y caché para no exceder cuota.
+    """
+    def __init__(self, max_requests=20, time_window=60):
+        self.max_requests = max_requests
+        self.time_window = time_window  # en segundos
+        
+    def get_cache_key(self, prompt):
+        """Genera una clave de caché basada en el hash del prompt"""
+        return f"gemini_cache_{hashlib.md5(prompt.encode()).hexdigest()}"
+    
+    def can_request(self, user_id):
+        """Verifica si el usuario puede hacer una solicitud"""
+        cache_key = f"rate_limit_{user_id}"
+        request_times = cache.get(cache_key, [])
+        now = time.time()
+        
+        # Limpiar solicitudes antiguas (fuera de la ventana de tiempo)
+        request_times = [t for t in request_times if now - t < self.time_window]
+        
+        if len(request_times) >= self.max_requests:
+            # Calcular cuánto tiempo esperar
+            oldest_request = min(request_times)
+            wait_time = self.time_window - (now - oldest_request) + 1
+            return False, wait_time
+        
+        return True, 0
+    
+    def register_request(self, user_id):
+        """Registra una solicitud hecha por el usuario"""
+        cache_key = f"rate_limit_{user_id}"
+        request_times = cache.get(cache_key, [])
+        now = time.time()
+        
+        # Limpiar solicitudes antiguas
+        request_times = [t for t in request_times if now - t < self.time_window]
+        request_times.append(now)
+        
+        # Guardar en caché por 60 segundos
+        cache.set(cache_key, request_times, 60)
+    
+    def get_cached_response(self, prompt):
+        """Intenta obtener una respuesta cacheada"""
+        cache_key = self.get_cache_key(prompt)
+        return cache.get(cache_key)
+    
+    def cache_response(self, prompt, response):
+        """Cachea una respuesta por 1 hora"""
+        cache_key = self.get_cache_key(prompt)
+        cache.set(cache_key, response, 3600)  # 1 hora
+
+rate_limiter = RateLimiter(max_requests=20, time_window=60)
+
 @login_required(login_url='login')
 def buhobot(request):
     if request.method == "POST":
@@ -184,11 +243,31 @@ def buhobot(request):
             escenario = data.get("scenario", "Restaurante")
             historial_previo = data.get("history", []) # Recibe la ventana deslizante de memoria
 
+            # ===== VERIFICAR RATE LIMIT =====
+            user_id = request.user.id
+            can_request, wait_time = rate_limiter.can_request(user_id)
+            
+            if not can_request:
+                return JsonResponse({
+                    "status": "rate_limit",
+                    "message": f"⏳ Límite de solicitudes alcanzado. Espera {int(wait_time)} segundos.",
+                    "wait_time": wait_time
+                }, status=429)
+
             # Validar comando especial de /ayuda solicitado en tus requerimientos
             if mensaje_usuario.lower() == "/ayuda":
                 prompt_ayuda = f"El usuario está atascado en una conversación en inglés nivel {nivel} en el escenario {escenario}. Genera únicamente una lista con 3 frases sugeridas, cortas y sencillas que el usuario podría responder en esta situación. No agregues saludos ni explicaciones, solo las 3 frases numeradas."
+                
+                # Intentar obtener del caché primero
+                respuesta_cacheada = rate_limiter.get_cached_response(prompt_ayuda)
+                if respuesta_cacheada:
+                    return JsonResponse({"status": "success", "reply": respuesta_cacheada, "cached": True})
+                
                 response = model.generate_content(prompt_ayuda)
-                return JsonResponse({"status": "success", "reply": response.text})
+                respuesta_bot = response.text
+                rate_limiter.register_request(user_id)
+                rate_limiter.cache_response(prompt_ayuda, respuesta_bot)
+                return JsonResponse({"status": "success", "reply": respuesta_bot})
 
             # 1. Cargar el filtro de vocabulario JSON
             ruta_vocabulario = os.path.join(os.path.dirname(__file__), 'vocabulario.json')
@@ -221,6 +300,12 @@ def buhobot(request):
                     "parts": [msg["content"]]
                 })
 
+            # ===== USAR CACHÉ SI ESTÁ DISPONIBLE =====
+            prompt_cache_key = f"{system_prompt}_{mensaje_usuario}"
+            respuesta_cacheada = rate_limiter.get_cached_response(prompt_cache_key)
+            if respuesta_cacheada:
+                return JsonResponse({"status": "success", "reply": respuesta_cacheada, "cached": True})
+
             # Inicializar chat estructurado con instrucciones fijas
             chat = genai.GenerativeModel(
                 model_name='gemini-2.5-flash',
@@ -230,6 +315,10 @@ def buhobot(request):
             # Enviar el mensaje del estudiante
             response = chat.send_message(mensaje_usuario)
             respuesta_bot = response.text
+            
+            # ===== REGISTRAR SOLICITUD Y CACHEAR RESPUESTA =====
+            rate_limiter.register_request(user_id)
+            rate_limiter.cache_response(prompt_cache_key, respuesta_bot)
 
             return JsonResponse({"status": "success", "reply": respuesta_bot})
 

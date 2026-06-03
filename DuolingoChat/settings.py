@@ -111,6 +111,14 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Cache Configuration for Rate Limiting (In-Memory)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
