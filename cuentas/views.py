@@ -4,7 +4,7 @@ import os
 import time
 import hashlib
 import google.generativeai as genai
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth.models import User
@@ -166,14 +166,39 @@ def buhobot(request):
 
 
 # Cargar las variables de entorno del archivo .env
-dotenv_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'DuolingoChat', 'buhobot.env'))
-load_dotenv(dotenv_path)
+try:
+    from dotenv import load_dotenv
+    dotenv_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'DuolingoChat', 'buhobot.env'))
+    load_dotenv(dotenv_path)
+except ImportError:
+    # Si no existe (como en Render), no pasa nada, Django usará las variables del servidor
+    pass
 
-# Jalamos la API Key de forma segura
-GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# 1. Intentamos buscar la clave directamente en el sistema (como hace Render)
+GOOGLE_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+# 2. Si no existe en el sistema (como pasa en tu computadora local habitualmente),
+# intentamos cargarla de forma opcional desde tu archivo .env sin romper nada
 if not GOOGLE_API_KEY:
-    raise RuntimeError(f"GEMINI_API_KEY no encontrado en {dotenv_path}")
-genai.configure(api_key=GOOGLE_API_KEY)
+    try:
+        from dotenv import load_dotenv
+        # Corregimos el path asegurando que termine exactamente en 'buhobot.env'
+        dotenv_path = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'DuolingoChat', 'buhobot.env'))
+        load_dotenv(dotenv_path)
+        GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY")
+    except ImportError:
+        pass
+
+# 3. Configuramos la API solo si encontramos la clave en algún lado
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+else:
+    # Cambiamos el 'raise RuntimeError' por un print. Así el servidor NO se cae
+    # y te avisa amablemente si olvidaste poner la clave
+    print("⚠️ ADVERTENCIA: GEMINI_API_KEY no encontrada en el sistema ni en buhobot.env")
+
+# 4. Inicializar el modelo
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 # ===== RATE LIMITER GRATUITO (SIN GASTAR DINERO) =====
